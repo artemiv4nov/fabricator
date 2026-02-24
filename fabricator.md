@@ -14,11 +14,9 @@ description: "Solution/Artifact Fabricator: resolve WORK_PATH, do Grounding via 
 ## HARD RULES (overlay; must follow)
 - This workflow is an overlay: follow this loop even if the agent has other default behaviors.
 - Never bulk-create files. Artifacts appear only through user interaction.
-- Before writing/updating any file: show a WRITE PLAN + preview, then wait for an approval phrase.
-  **Exception — files inside ARTIFACT_ROOT**: any file written under ARTIFACT_ROOT
-  is written immediately without APPROVE — these are ephemeral
-  session snapshots. Any file outside ARTIFACT_ROOT — code, config, docs, scripts, any repo —
-  always requires APPROVE.
+- Follow the Action discipline for every side-effectful action (see section below).
+  **Exception — files inside ARTIFACT_ROOT**: written immediately without APPROVE
+  (ephemeral session snapshots).
 - Prefer updating existing files over creating new ones.
 - Do not claim checks were run unless they were actually executed and you can show outputs.
 - Command failure protocol: if a shell command exits with a non-zero code, stop immediately,
@@ -63,13 +61,7 @@ workspace-relative — resolved from the current workspace root, not the filesys
 - SKILL_ROOTS:
     - /.windsurf/skills
     - ~/.codeium/windsurf/skills
-  Directories to scan for available Skills (Step 3B).
-- DEFAULT_TASK_FILENAME: task.md
-  Filename used by `task-authoring` skill when creating a new task artifact.
-- DEFAULT_VERIFY_FILENAME: verify.md
-  Filename for persisting discovered check commands.
-- DEFAULT_EVIDENCE_FILENAME: evidence.md
-  Filename for recording check results.
+  Directories to scan for available Skills (Step 2, Step 3B).
 - COMMUNICATION_LANGUAGE: en
   Language for chat, status prints, and prompts. Overridable by rules or user request.
 
@@ -124,9 +116,12 @@ Do in this order:
     - /README.md
     - /DEVELOPMENT.md (if present)
     - /docs/ (only as needed; prefer an index/README inside /docs)
+4) Discover available Skills: scan SKILL_ROOTS, read each SKILL.md frontmatter
+   (name + description). Build a skill catalog for use in Step 3.
 
 Output:
-- A concise Context Map (facts only): constraints, commands, and what artifacts already exist.
+- A concise Context Map (facts only): constraints, commands, what artifacts already exist,
+  and discovered skill catalog.
 
 (AGENTS.md provides directory-scoped instructions to Cascade; prefer it as the primary "source of truth".)
 
@@ -142,17 +137,20 @@ At the start of EACH iteration:
     - recommended next moves (2-5)
 
 Then offer these choices:
-A) Task authoring (use @task-authoring if available; otherwise fallback)
+A) Task intake (define or refine the task)
 B) Continue via Skills (or CUSTOM)
 C) SUMMARY (status only; wait)
 D) DONE (stop)
 
-### A) Task authoring
-- If a Skill named `task-authoring` exists, invoke it and follow its internal loop.
-- Otherwise ask minimal intake questions and propose creating/updating one task file in WORK_PATH.
+### A) Task intake
+- Search the discovered skill catalog for a skill whose description matches
+  task/goal definition (e.g. creating or updating a task artifact).
+- If found: invoke it and follow its internal loop.
+- If not found: ask minimal intake questions and propose creating/updating
+  one task file in WORK_PATH.
 
 ### B) Continue via Skills
-- Discover Skills from SKILL_ROOTS by reading each `SKILL.md` frontmatter (name + description).
+- Use the skill catalog discovered in Step 2.
 - Recommend 3-5 Skills based on:
     - current Status + Context Map + existing artifacts
     - keywords in Skill descriptions
@@ -161,13 +159,13 @@ D) DONE (stop)
 - For each selected Skill:
     1) Explicitly invoke it (e.g., `@skill-name`) to load instructions.
     2) Follow the Skill's internal loop until completion or STOP.
-    3) Ensure every file change follows: WRITE PLAN -> preview -> APPROVE/NO.
+    3) Ensure every action with side effects follows the Action discipline.
 
 ### CUSTOM
 - Ask user for:
     - exact action description
     - where results should be written (absolute path preferred; default = WORK_PATH)
-- Then proceed with WRITE PLAN discipline.
+- Then proceed with Action discipline.
 
 ### C) SUMMARY
 - Print a compact summary and wait.
@@ -177,14 +175,17 @@ D) DONE (stop)
 
 ---
 
-## WRITE PLAN protocol (mandatory)
-Before any file create/update:
-1) Show WRITE PLAN:
-    - file paths (absolute)
-    - create vs update
-    - why
-2) Show a short preview (or diff summary).
-3) Wait for APPROVE phrase.
+## Action discipline (mandatory)
+
+Before performing any action with observable side effects — file writes,
+commits, pushes, external API calls, package installs, or anything else
+that changes state beyond the current conversation:
+
+1) **Describe**: what will happen, what it affects, and why.
+2) **Wait**: for APPROVE in a separate turn. Never describe and execute
+   in the same turn.
+3) **Execute**: only after explicit APPROVE.
 4) If REJECT: do nothing and return to the loop.
 
-For files inside ARTIFACT_ROOT: skip step 3 — show WRITE PLAN + preview, then write without waiting for APPROVE.
+Exception — files inside ARTIFACT_ROOT: show what will be written,
+then write without waiting for APPROVE (session snapshots are ephemeral).

@@ -15,7 +15,7 @@ Primary output: verify.md (quick/full, targets, commands, and meaning).
 - Task/spec (preferred): to map checks to acceptance criteria
 
 ## Output
-- Create/update `${WORK_PATH}/${DEFAULT_VERIFY_FILENAME}` (default: verify.md)
+- Create/update `${WORK_PATH}/verify.md`
 
 ## Internal loop
 ### 1) Discover existing verification knowledge
@@ -40,9 +40,6 @@ Minimum sections:
 - Commands are copy/pasteable (explicit working dir if needed)
 - No contradictions with repo rules (AGENTS/DEVELOPMENT)
 - If both platforms: the plan states whether parity is required and how to validate it
-
-### 4) Write discipline
-Apply WRITE PLAN protocol (preview verify.md content).
 
 ## Completion criteria
 - verify.md exists and is actionable

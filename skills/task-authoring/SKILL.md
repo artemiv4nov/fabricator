@@ -15,7 +15,7 @@ One iteration should result in exactly one updated/created task file in WORK_PAT
 - User intent / goal
 
 ## Output (default)
-- Create or update: `${WORK_PATH}/${DEFAULT_TASK_FILENAME}` (default: task.md)
+- Create or update: `${WORK_PATH}/task.md`
   Rules:
 - If a task file already exists in WORK_PATH, prefer updating it instead of creating a new one.
 - If multiple “task-like” files exist, ask user to pick the canonical one.
@@ -53,9 +53,6 @@ Keep it concise and decidable. Suggested sections:
 - Risks
 - Open questions
 - References (links to existing artifacts/docs)
-
-### 4) Write discipline
-Apply WRITE PLAN protocol (preview the full task file content).
 
 ## Completion criteria
 - Acceptance criteria are explicit and testable

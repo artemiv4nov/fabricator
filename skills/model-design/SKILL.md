@@ -36,9 +36,6 @@ Include:
 - Must not contradict spec
 - If contracts exist, ensure model respects contract constraints
 
-### 4) Write discipline
-Apply WRITE PLAN protocol.
-
 ## Completion criteria
 - A developer can implement logic without inventing hidden states
 

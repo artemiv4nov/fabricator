@@ -42,9 +42,6 @@ Minimum sections (even in markdown):
 - Must align with spec rules and acceptance criteria
 - Must not conflict with existing contracts in WORK_PATH
 
-### 4) Write discipline
-Apply WRITE PLAN protocol.
-
 ## Completion criteria
 - Contract is precise enough that a consumer can implement against it
 

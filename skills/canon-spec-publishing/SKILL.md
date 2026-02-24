@@ -46,9 +46,6 @@ Turn stable knowledge from WORK_PATH into a **canonical spec** in `/docs/**`.
 
 4) Coherence gate:
    - If contradictions with existing canonical specs exist, stop and propose resolution.
-
-5) Write discipline:
-   - Apply WRITE PLAN protocol (preview spec content + index changes).
    - Update spec index README if it exists.
 
 ## Completion criteria

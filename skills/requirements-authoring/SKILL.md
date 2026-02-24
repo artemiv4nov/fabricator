@@ -33,9 +33,6 @@ This skill must NOT write to `/docs/**`.
 ### 2) Draft requirements (preview first)
 Follow the suggested structure below. Keep it concise and pack-friendly.
 
-### 3) Write discipline
-Apply WRITE PLAN protocol.
-
 ## Suggested structure (small, pack-friendly)
 - Context (1 paragraph)
 - Goal / Non-goals (bullet)

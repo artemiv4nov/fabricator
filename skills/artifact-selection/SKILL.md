@@ -55,9 +55,6 @@ Recommend the “next best moves”, e.g.:
 - verification-run
 - CUSTOM
 
-### 5) Write discipline
-Apply WRITE PLAN protocol (preview the updated "Artifact Plan" section).
-
 ## Completion criteria
 - Artifact Plan exists in the anchor file
 - Next skills are recommended

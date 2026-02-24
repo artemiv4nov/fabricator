@@ -17,7 +17,7 @@ Never claim a check was run without actual command output.
 ## Outputs
 Default: no files written.
 Optional (only if user approves):
-- Create/update `${WORK_PATH}/${DEFAULT_EVIDENCE_FILENAME}` (default: evidence.md)
+- Create/update `${WORK_PATH}/evidence.md`
 
 ## Internal loop
 ### 1) Select target and level
@@ -26,7 +26,7 @@ Ask (unless already known):
 - Level: Quick / Full
 
 ### 2) Resolve command source (strict priority)
-1) `${WORK_PATH}/${DEFAULT_VERIFY_FILENAME}` (verify.md) if present
+1) `${WORK_PATH}/verify.md` if present
 2) **`Verification` section in the nearest `AGENTS.md`** — this is the canonical per-repo source;
    it defines two rings: static checks (no device) and dynamic checks (device required)
 3) Commands in DEVELOPMENT.md / repo docs (via Context Map)
@@ -60,7 +60,6 @@ If yes:
   - commands executed
   - results (pass/fail + exit codes)
   - short failure summary if any
-- Apply WRITE PLAN protocol.
 
 ## Completion criteria
 - Requested checks executed (or explicitly skipped)

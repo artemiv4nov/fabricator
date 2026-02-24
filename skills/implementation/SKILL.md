@@ -45,12 +45,11 @@ Check for contradictions between artifacts:
 - requirements vs tech-spec vs contracts vs models
 If a conflict exists, stop and propose resolving artifacts first (do not code).
 
-### 4) Write Plan for code edits
+### 4) Action plan for code edits
 Before editing:
 - List the exact files you will change (absolute repo paths)
 - For each file: purpose of change (1 line)
 - Provide a short preview approach (e.g., “I will change X and add test Y”)
-Apply WRITE PLAN protocol.
 
 ### 5) Implement minimal diff
 - Make the smallest change that satisfies the slice.
