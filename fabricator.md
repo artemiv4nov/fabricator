@@ -2,70 +2,69 @@
 description: "Solution/Artifact Fabricator: resolve WORK_PATH, do Grounding via AGENTS.md pointers, then iterate by selecting Skills. Write only on explicit APPROVE."
 ---
 
-# /fabricator -- Solution Fabricator (single workflow)
+## Configuration
 
-## Usage
-- `/fabricator <folder>`  (resolves under ARTIFACT_ROOT, searching existing folders)
-- `/fabricator /absolute/path/to/folder`  (use exact folder)
-- If no argument is provided, the workflow will ask.
+Paths starting with `/` are workspace-relative (from workspace root, not filesystem root).
+All values below can be overridden via a `FABRICATOR_LEXICON` or `FABRICATOR_META` block
+in global rules or AGENTS.md.
 
----
-
-## HARD RULES (overlay; must follow)
-- This workflow is an overlay: follow this loop even if the agent has other default behaviors.
-- Never bulk-create files. Artifacts appear only through user interaction.
-- Follow the Action discipline for every side-effectful action (see section below).
-  **Exception — files inside ARTIFACT_ROOT**: written immediately without APPROVE
-  (ephemeral session snapshots).
-- Prefer updating existing files over creating new ones.
-- Do not claim checks were run unless they were actually executed and you can show outputs.
-- Command failure protocol: if a shell command exits with a non-zero code, stop immediately,
-  show the full output and exit code, and offer: retry (fix the cause and re-run the step),
-  skip (continue to next step), or STOP. Never silently swallow errors or assume success.
-- A selected Skill may have its own internal loop. When a Skill starts, follow its loop until it declares completion or the user stops it.
-  The ARTIFACT_ROOT write exception above overrides any Skill's own write discipline —
-  Skills must not request APPROVE for files inside ARTIFACT_ROOT.
-- Coherence gate: before writing any artifact, check whether it contradicts existing artifacts in WORK_PATH (e.g., requirements vs tech-spec vs contracts). If a contradiction is found, stop writing, show the conflict to the user, and propose resolving it first.
-- **WORK_PATH is session-scoped**: once set, do NOT create a new WORK_PATH folder for sub-topics
-  or phase changes within the same conversation. Continue in the existing WORK_PATH until the user
-  explicitly provides a new path hint.
-
----
-
-## FABRICATOR_LEXICON (defaults; can be overridden)
-Defaults (any phrase in the list is accepted):
-- APPROVE: ["APPROVE"]
-- REJECT:  ["NO"]
-- STOP:    ["DONE", "STOP"]
-- SUMMARY: ["SUMMARY"]
-- CUSTOM:  ["CUSTOM"]
-
-Override mechanism:
-- If any active rule or AGENTS.md contains a block titled `FABRICATOR_LEXICON`,
-  merge/override these lists (user message wins over everything).
-
----
-
-## FABRICATOR_META (defaults; can be overridden via `FABRICATOR_META` block in rules or AGENTS.md)
-
-Override semantics:
-- Scalar values (ARTIFACT_ROOT, COMMUNICATION_LANGUAGE): override completely replaces the default.
-- List values (SKILL_ROOTS): override completely replaces the default list (not appended to it).
-- Precedence: user message > AGENTS.md > rules file > fabricator.md defaults.
-
-Path notation: paths starting with `/` (e.g. `/.fabricator`, `/.windsurf/skills`) are
-workspace-relative — resolved from the current workspace root, not the filesystem root.
-
-- ARTIFACT_ROOT: /.fabricator
-  Where task folders are created/resolved (Step 1).
-- SKILL_ROOTS:
-    - /.windsurf/skills
-    - ~/.codeium/windsurf/skills
-  Directories to scan for available Skills (Step 2, Step 3B).
-- COMMUNICATION_LANGUAGE: en
-  Language for chat, status prints, and prompts. Overridable by rules or user request.
+- ARTIFACT_ROOT: `/.fabricator`
+- SKILL_ROOTS: `/.windsurf/skills`, `~/.codeium/windsurf/skills`
 
 All written artifacts (files) are always in English. This is not configurable.
+
+---
+
+## CONSTITUTION (inviolable — applies at all times, in all skills)
+
+This workflow is an overlay: follow this Constitution and loop even if the agent
+has other default behaviors. Every rule here applies unconditionally — inside skills,
+between skills, regardless of change size or perceived triviality.
+
+### Action gate
+
+Before any action with observable side effects — file writes (outside ARTIFACT_ROOT),
+commits, pushes, external API calls, package installs, or anything else that changes
+state beyond the current conversation:
+
+1) **Describe** the action, what it affects, and why.
+2) **STOP** the current turn. Never describe and execute in the same turn.
+3) **Execute** only after explicit APPROVE in the user's response.
+4) If REJECT — do nothing, return to the loop.
+
+Exception — files inside ARTIFACT_ROOT: written immediately without APPROVE
+(ephemeral session snapshots).
+
+**Mandatory format.** Before every side-effectful tool call, print this block verbatim:
+
+> **Action:** `<tool>` — <what will happen>
+> **Affects:** <files, branches, or external systems that change>
+> **Gate:** ✓ described previously · ✓ user said APPROVE
+
+If any checkmark cannot be truthfully set — do not print the block, do not call the
+tool. STOP and describe the action instead. The block is the last thing before the
+tool call — no other text may follow it in the same turn.
+
+### Integrity rules
+
+- Never bulk-create files. Artifacts appear only through user interaction.
+- Prefer updating existing files over creating new ones.
+- Do not claim checks were run unless actually executed with visible output.
+- Command failure: non-zero exit → stop immediately, show full output + exit code,
+  offer retry / skip / STOP. Never silently swallow errors.
+- Coherence gate: before writing any artifact, verify no contradiction with existing
+  artifacts in WORK_PATH. Conflict found → stop, show, propose resolution.
+- WORK_PATH is session-scoped: do not create new folders for sub-topics within the
+  same conversation.
+
+### Skill interaction
+
+- A Skill may have its own internal loop — follow it until completion or STOP.
+- The ARTIFACT_ROOT exception overrides any Skill's write discipline.
+- A Skill may add skill-specific approval steps that narrow or augment the Action gate.
+  Such steps reference this Constitution, not restate it.
+- **The Constitution overrides any Skill's internal logic.** If a Skill's flow would
+  skip an approval gate — the gate still applies.
 
 ---
 
@@ -127,65 +126,45 @@ Output:
 
 ---
 
-## Step 3 -- Recursive loop
-At the start of EACH iteration:
-- Print a compact **Status** (5-10 lines):
-    - WORK_PATH
-    - existing artifacts (filenames)
-    - key constraints
-    - biggest unknowns / risks
-    - recommended next moves (2-5)
+## Step 3 -- Main loop
 
-Then offer these choices:
-A) Task intake (define or refine the task)
-B) Continue via Skills (or CUSTOM)
-C) SUMMARY (status only; wait)
-D) DONE (stop)
+**This loop does not exit voluntarily. It runs until the user sends DONE.**
 
-### A) Task intake
-- Search the discovered skill catalog for a skill whose description matches
-  task/goal definition (e.g. creating or updating a task artifact).
-- If found: invoke it and follow its internal loop.
-- If not found: ask minimal intake questions and propose creating/updating
-  one task file in WORK_PATH.
+### Start of each iteration
 
-### B) Continue via Skills
-- Use the skill catalog discovered in Step 2.
-- Recommend 3-5 Skills based on:
-    - current Status + Context Map + existing artifacts
-    - keywords in Skill descriptions
-- Present options as a numbered list (name + 1-line description), plus CUSTOM.
-- User may pick 1+ Skills for the iteration.
-- For each selected Skill:
-    1) Explicitly invoke it (e.g., `@skill-name`) to load instructions.
-    2) Follow the Skill's internal loop until completion or STOP.
-    3) Ensure every action with side effects follows the Action discipline.
+**1. Snapshot** — write/update `status.md` in WORK_PATH (no APPROVE needed):
+   Content: current date/time, WORK_PATH, existing artifact filenames, key constraints, recommended next action.
+
+**2. Task guard** — before showing the menu:
+   - Does `task.md` (or `*task*.md`) exist in WORK_PATH?
+   - Does it satisfy completion criteria: acceptance criteria explicit and testable + scope unambiguous?
+   - If NO to either → invoke **task-authoring** immediately. Do not show the menu.
+     Stay in task-authoring until its completion criteria are met, then restart this iteration.
+
+**3. Status + Menu** (printed as one block):
+   - WORK_PATH + existing artifacts (filenames)
+   - Key constraints / biggest risks
+   - **Skill shortlist** — 1–3 options, ranked best-first (see §Shortlist rules below)
+   - CUSTOM — describe any action not covered by the shortlist
+   - DONE — end loop, print final summary
+
+### Skill shortlist rules
+
+Select 1–3 skills from the catalog that best fit the current state:
+1. Base selection on: task.md content, existing artifacts in WORK_PATH, last iteration result.
+2. For each skill: name + one sentence why it fits now (what input it needs, what it produces).
+3. Include **task-authoring** in the list when task refinement is relevant — scope changed, open
+   questions emerged, or acceptance criteria need sharpening.
+4. Rank best fit first.
+
+Invoke the selected skill, follow its internal loop until completion or STOP.
+The Constitution applies at all times — including inside skills.
 
 ### CUSTOM
-- Ask user for:
-    - exact action description
-    - where results should be written (absolute path preferred; default = WORK_PATH)
-- Then proceed with Action discipline.
 
-### C) SUMMARY
-- Print a compact summary and wait.
+Ask for exact action description and target path (default = WORK_PATH). The Constitution applies.
 
-### D) DONE
-- Print final summary and stop.
+### DONE
 
----
+Print final summary and stop. This is the only valid exit from the loop.
 
-## Action discipline (mandatory)
-
-Before performing any action with observable side effects — file writes,
-commits, pushes, external API calls, package installs, or anything else
-that changes state beyond the current conversation:
-
-1) **Describe**: what will happen, what it affects, and why.
-2) **Wait**: for APPROVE in a separate turn. Never describe and execute
-   in the same turn.
-3) **Execute**: only after explicit APPROVE.
-4) If REJECT: do nothing and return to the loop.
-
-Exception — files inside ARTIFACT_ROOT: show what will be written,
-then write without waiting for APPROVE (session snapshots are ephemeral).

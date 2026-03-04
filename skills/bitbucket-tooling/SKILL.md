@@ -1,9 +1,11 @@
 ---
 name: bitbucket-tooling
-description: "Perform Bitbucket Server REST API operations: compose PR description, create PR, post comments, fetch and filter review comments. Scripts are co-located in this skill directory. (4 supporting files)"
+description: "Use after git-tooling push to create or manage a PR on Bitbucket Server. Composes PR description, creates PR via API, handles review comments. Terminal delivery step. (5 supporting files)"
 ---
 
 # bitbucket-tooling
+
+> **Law:** follow every clause of the Fabricator Constitution.
 
 ## Purpose
 
@@ -14,7 +16,7 @@ All Bitbucket Server operations for the development lifecycle:
 - Fetch and filter unresolved review comments (pagination handled automatically)
 
 ## Inputs
-- WORK_PATH (for artifact storage: pr-description.md, pr.md, review-NNN.md, fix-list-NNN.md)
+- WORK_PATH (for artifact storage: pr-<JIRA-KEY>.md, review-<branch>-NNN.md, fix-list-<branch>-NNN.md)
 - BB_TOKEN in macOS Keychain (see Setup)
 - Git remote pointing to Bitbucket Server repository
 
@@ -67,13 +69,14 @@ AI task. No shell commands.
    git diff $MERGE_BASE..HEAD --stat
    git diff $MERGE_BASE..HEAD
    ```
-4. Fill the PR template (see `## PR template` at the bottom of this file):
-   - **Title** always in English: `PROJ-XXXX | short description`
-   - **Dev** section: explain what changed, how, why; include measurements if any
-   - **QA** section: screens + use cases to test; if nothing — state explicitly why; add mockup links for UI changes
-   - Replace every `🚧 TODO 🚧` block with real content
+4. Fill the PR description:
+   - If a PR description standard is available in context (rules or repository files
+     such as CONTRIBUTING.md), follow it for title format, description structure,
+     and section-filling rules.
+   - If no standard is present — ask the user for the PR format.
 5. Show title + description. Ask APPROVE (final) / REJECT (revise)
-6. Write `pr-description.md` to WORK_PATH (written immediately — inside ARTIFACT_ROOT)
+6. Write `pr-<JIRA-KEY>.md` to WORK_PATH (written immediately — inside ARTIFACT_ROOT).
+   Filename example: `pr-PROJ-123.md`. See [Branch & key slugs](#branch--key-slugs) for naming.
 
 ---
 
@@ -107,11 +110,14 @@ Extract `PR_ID` from the `id=<value>` line in the output:
 PR_ID=<value>  # AI reads the numeric value from the output above and assigns it
 ```
 
+Update `pr-<JIRA-KEY>.md` in WORK_PATH: append PR metadata (ID, URL, branch, state)
+under a `## PR` heading (written immediately — inside ARTIFACT_ROOT).
+
 ---
 
 ### update_pr
 
-Update title or description of an existing PR. Requires `PR_ID` (from `pr.md` or `find_open_pr`).
+Update title or description of an existing PR. Requires `PR_ID` (from `pr-<JIRA-KEY>.md` or `find_open_pr`).
 
 First fetch the current PR version (Bitbucket uses optimistic locking):
 ```bash
@@ -122,7 +128,7 @@ curl -s --connect-timeout 10 --max-time 60 \
 VERSION=<value from output>
 ```
 
-Edit title or description (reuse `pr-description.md` as starting point). Show diff. Ask APPROVE / REJECT.
+Edit title or description (reuse `pr-<JIRA-KEY>.md` as starting point). Show diff. Ask APPROVE / REJECT.
 
 ```bash
 python3 "$SKILL_DIR/bb_make_pr_payload.py" \
@@ -142,7 +148,7 @@ python3 "$SKILL_DIR/bb_make_pr_payload.py" \
 DESCRIPTION
 ```
 
-Update `pr-description.md` with the new content (written immediately — inside ARTIFACT_ROOT).
+Update `pr-<JIRA-KEY>.md` with the new content (written immediately — inside ARTIFACT_ROOT).
 
 ---
 
@@ -163,11 +169,54 @@ COMMENT
 
 ---
 
+### reply_to_comment
+
+Reply to a specific comment in a PR. Requires `PR_ID` and `COMMENT_ID` (from `review-<branch>-NNN.md`
+or `fetch_review_comments` output).
+
+The `COMMENT_ID` is the numeric id of the comment being replied to. It can target any
+repository and PR — set `PROJECT`, `REPO`, and `PR_ID` accordingly before calling.
+
+```bash
+python3 "$SKILL_DIR/bb_make_comment_payload.py" --parent $COMMENT_ID <<'COMMENT' | curl -s -X POST \
+    -H "Authorization: Bearer $BB_TOKEN" \
+    -H "Content-Type: application/json" \
+    "https://$BB_HOST/rest/api/1.0/projects/$PROJECT/repos/$REPO/pull-requests/$PR_ID/comments" \
+    --connect-timeout 10 --max-time 120 \
+    -d @- \
+  | python3 "$SKILL_DIR/bb_check_response.py"
+<reply text here>
+COMMENT
+```
+
+---
+
+### add_reaction
+
+Add a reaction (emoji) to a comment. Requires `PR_ID` and `COMMENT_ID`.
+
+The `REACTION` is the emoji short name (e.g., `white_check_mark`, `thumbsup`, `heart`).
+
+```bash
+BB_TOKEN="$BB_TOKEN" python3 "$SKILL_DIR/bb_add_reaction.py" \
+  --url "https://$BB_HOST/rest/comment-likes/latest/projects/$PROJECT/repos/$REPO/pull-requests/$PR_ID/comments/$COMMENT_ID/reactions/$REACTION"
+```
+
+Prints "success" on successful addition, "ERROR" on failure.
+
+Common reactions:
+- `white_check_mark` — ✅ (resolved/done)
+- `thumbsup` — 👍 (agree)
+- `heart` — ❤️ (like)
+- `thinking_face` — 🤔 (hmm)
+
+---
+
 ### post_bot_review_context
 
 AI task + API call.
 
-Precondition: `pr-description.md` must exist in WORK_PATH (i.e. `compose_pr` was already run).
+Precondition: `pr-<JIRA-KEY>.md` must exist in WORK_PATH (i.e. `compose_pr` was already run).
 If absent — run `compose_pr` first.
 
 Compose a comment in English based on commits and diff already analyzed in `compose_pr`.
@@ -218,7 +267,7 @@ AI task. No shell commands.
 Takes the output of `fetch_review_comments` and produces a structured fix list.
 Process all comments — both `[HUMAN]` and `[BOT]`.
 
-After each fix is implemented, update the corresponding `review-NNN.md` item:
+After each fix is implemented, update the corresponding `review-<branch>-NNN.md` item:
 - `[x]` — fixed and committed
 - `[ ] ~~text~~ — deliberately not fixed: <reason>` — rejected with rationale
 
@@ -234,13 +283,13 @@ After each fix is implemented, update the corresponding `review-NNN.md` item:
    - [ ] `<file>:<line or "general">` — <concise description>
    ```
 3. Show the grouped list. If no unresolved comments — report and stop.
-4. Write `fix-list-NNN.md` to WORK_PATH (written immediately — inside ARTIFACT_ROOT).
+4. Write `fix-list-<branch>-NNN.md` to WORK_PATH (written immediately — inside ARTIFACT_ROOT).
 
 ---
 
 ### find_open_pr
 
-First check if `pr.md` already exists in WORK_PATH — it contains a previously stored `PR_ID`.
+First check if `pr-<JIRA-KEY>.md` already exists in WORK_PATH and contains a `## PR` section with `PR_ID`.
 If found, read `PR_ID` from it and skip the API call.
 
 Otherwise, URL-encode the branch name (slashes in branch names like `feature/foo` must be encoded):
@@ -262,28 +311,40 @@ curl -s --connect-timeout 10 --max-time 60 \
 
 All artifacts are written immediately (inside ARTIFACT_ROOT — no APPROVE required).
 
-### `pr-description.md` — after `compose_pr`
-Contains final title + description before API submission.
+### Branch & key slugs
 
-### `pr.md` — after `create_pr` or `find_open_pr`
+- **JIRA_KEY**: detected from branch name (`[A-Z]+-[0-9]+`), e.g. `PROJ-123`.
+- **BRANCH_SLUG**: branch name with `/` replaced by `-`, e.g. `feature/auth` → `feature-auth`.
+
+### `pr-<JIRA-KEY>.md` — after `compose_pr`, updated by `create_pr`
+
+Single file per PR. Created by `compose_pr` with title + description;
+`create_pr` appends a `## PR` section with metadata.
+
+Filename example: `pr-PROJ-123.md`.
 
 ```markdown
-# PR
+# <title>
+
+<PR description content>
+
+## PR
 
 - **ID:** <PR_ID>
 - **URL:** https://<BB_HOST>/projects/<PROJECT>/repos/<REPO>/pull-requests/<PR_ID>
-- **Title:** <title>
 - **Branch:** <branch> → <target>
-- **Jira:** <PROJ-XXXX or "none">
+- **Jira:** <JIRA-KEY>
 - **State:** OPEN
 ```
 
-### `review-NNN.md` — after each `fetch_review_comments` run
+### `review-<BRANCH_SLUG>-NNN.md` — after each `fetch_review_comments` run
 
-`NNN` = next number (001, 002, …) among existing `review-*.md` in WORK_PATH.
+`NNN` = next number (001, 002, …) among existing `review-<BRANCH_SLUG>-*.md` in WORK_PATH.
+
+Filename example: `review-feature-auth-001.md`.
 
 ```markdown
-# Review NNN
+# Review <BRANCH_SLUG> NNN
 
 Fetched: <ISO timestamp>
 
@@ -292,14 +353,16 @@ Fetched: <ISO timestamp>
 <bb_filter_comments.py output formatted as a list>
 ```
 
-### `fix-list-NNN.md` — written by AI after analyzing `review-NNN.md`
+### `fix-list-<BRANCH_SLUG>-NNN.md` — written by AI after analyzing `review-<BRANCH_SLUG>-NNN.md`
 
 Same `NNN` as the review file. Mark items `[x]` when implemented.
 
-```markdown
-# Fix list NNN
+Filename example: `fix-list-feature-auth-001.md`.
 
-Derived from: review-NNN.md
+```markdown
+# Fix list <BRANCH_SLUG> NNN
+
+Derived from: review-<BRANCH_SLUG>-NNN.md
 Progress: 0/<total> fixed
 
 ## <Category>
@@ -307,24 +370,13 @@ Progress: 0/<total> fixed
 - [ ] `<file>:<line>` — <description>
 ```
 
+## Related skills
+- **git-tooling** — must precede this skill; push must succeed before PR operations
+- **jira-tooling** — used alongside to link PR to a Jira issue or read issue context
+
 ## Completion criteria
 - Requested operation completed (or explicitly stopped by user)
 - Relevant WORK_PATH artifacts updated
 
 Return control to Fabricator.
 
-## PR template
-
-```markdown
-## Dev
-<plain-language explanation: what changed, how, why;
-research results / measurements if any;
-implementation details for non-obvious areas>
-
----
-
-## QA
-<screens and use cases to test;
-if no testing needed — state explicitly and explain why;
-add mockup links if UI changes were made>
-```

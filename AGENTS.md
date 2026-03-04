@@ -12,7 +12,7 @@ This repository contains the Fabricator methodology for Windsurf Cascade.
 
 - All file content is in English
 - Skills follow the SKILL.md frontmatter format (name, description)
-- Workflow and skills are markdown-only (no build step)
+- Workflow and skills are markdown + optional co-located scripts (no build step)
 
 ## Adding a skill
 

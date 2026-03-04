@@ -66,7 +66,7 @@ scripts for API integration.
 ## Safety model
 
 - **Human-controlled writes** — every file change outside the session folder
-  requires a WRITE PLAN + explicit approval
+  requires describe → approve → execute (Action gate)
 - **Coherence gate** — before writing, the agent checks for contradictions
   with existing artifacts
 - **Fail-fast** — if a command fails, the agent stops, shows output, and asks
@@ -163,7 +163,7 @@ Work in session folder → canon-spec-publishing → update `/docs/**`
 ## What's included
 
 - **`fabricator.md`** — the core workflow (one entry point)
-- **`skills/`** — 12 reusable skills:
+- **`skills/`** — 13 reusable skills:
 
 | Skill | Purpose |
 |---|---|
@@ -177,7 +177,8 @@ Work in session folder → canon-spec-publishing → update `/docs/**`
 | `verification-run` | Execute checks, record evidence |
 | `implementation` | Code changes guided by artifacts |
 | `git-tooling` | Commit message, commit, push |
-| `bitbucket-tooling` | PR operations via Bitbucket (optional) |
+| `bitbucket-tooling` | PR operations via Bitbucket Server (optional) |
+| `jira-tooling` | Jira Data Center operations (optional) |
 | `canon-spec-publishing` | Promote session knowledge to `/docs/` |
 
 Customization points (`FABRICATOR_META`, `FABRICATOR_LEXICON`) are documented
